@@ -1,0 +1,789 @@
+﻿
+<html>
+	<head>
+		<title>CM20219 – Coursework 2 – WebGL</title>
+        <meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body { margin: 0; overflow: hidden; }
+			canvas { width: 100%; height: 100%; }
+		</style>
+	</head>
+	<body>
+		<script src="three.js"></script>
+		<script src="OBJLoader.js"></script> 
+		<script>
+		/*
+		https://github.bath.ac.uk/ag2224/VisualComputing/blob/96c09ecef9df370bf17dd4ffc8e5260cd5b4353b/WebGL-Coursework/WebGL-Coursework.html
+		https://tzarowski.github.io/webGL/WebGL-Coursework
+		http://www.harveyives.co.uk/webgl/
+		http://vasilisnic.com/wp-content/uploads/2017/12/threeDemoDocumentation.pdf
+		*/
+            "use strict"; // https://stackoverflow.com/q/1335851/72470
+
+            // Global variables that are available in all functions.
+            // Note: You can add your own here, e.g. to store the rendering mode.
+            var camera, scene, renderer, mesh, cube, vertexPoints, spotLight;
+			
+			var cubeActive = true;
+			var bunnyActive = false;
+			var solarSystemActive = false;
+			
+			var rotNumX = 0;
+			var rotNumY = 0;
+			var rotNumZ = 0;
+			var rotSpeed = 0.05;
+			var objectRotateX = false;
+			var objectRotateY = false;
+			var objectRotateZ = false;
+			var objectRotateR = false;
+			
+			var renderingMode;
+			var rotateCam = false;
+			
+			var applyTexture = false;
+			
+			var bunny;
+			var bunnySize;
+			var bunnyGeometry;
+			
+			var rotCamHor = 0;
+			var rotCamVer = 0;
+			var R = 10;
+			var Theta = 0;
+			var Phi = 0;
+			
+
+            init(); //Initialise the scene, and draw it for the first time.
+			animate();//Cube rotate
+			loadBunny();
+			
+            // Listen for keyboard events, to react to them.
+            // Note: there are also other event listeners, e.g. for mouse events.
+            document.addEventListener('keydown', handleKeyDown);
+
+            // Scene initialisation. This function is only run once, at the very beginning.
+            function init()
+            {
+                scene = new THREE.Scene();
+
+                // Set up the camera, move it to (3, 4, 5) and look at the origin (0, 0, 0).
+                camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+                camera.position.set(3, 4, 5);
+                camera.lookAt(new THREE.Vector3(0, 0, 0));
+
+                // Draw a helper grid in the x-z plane (note: y is up).
+                scene.add(new THREE.GridHelper(10, 20, 0xffffff));				
+				
+				
+                //Draw a cube (requirement 1).
+				var geometry = new THREE.BoxGeometry(2,2,2);
+				//var material = new THREE.MeshBasicMaterial({color: 0x33B8FF});
+				var material = new THREE.MeshPhongMaterial({color:  0x33B8FF});
+				cube = new THREE.Mesh(geometry, material);
+				scene.add(cube);
+				
+				
+
+
+                //Visualise the axes of the global coordinate system (requirment 2).
+				var material = new THREE.LineBasicMaterial({color: 0xd92525});
+				var geometry = new THREE.Geometry();
+				geometry.vertices.push(new THREE.Vector3(5, 0, 0) );
+				geometry.vertices.push(new THREE.Vector3(-5, 0, 0) );
+				var line = new THREE.Line( geometry, material );
+				scene.add( line );
+				
+				var material = new THREE.LineBasicMaterial({color: 0x0342ff});
+				var geometry = new THREE.Geometry();
+				geometry.vertices.push(new THREE.Vector3(0, 0, 5) );
+				geometry.vertices.push(new THREE.Vector3(0, 0, -5) );
+				var line = new THREE.Line( geometry, material );
+				scene.add( line );
+				
+				var material = new THREE.LineBasicMaterial({color: 0x18ff03});
+				var geometry = new THREE.Geometry();
+				geometry.vertices.push(new THREE.Vector3(0, 5, 0) );
+				geometry.vertices.push(new THREE.Vector3(0, -5, 0) );
+				var line = new THREE.Line( geometry, material );
+				scene.add( line );
+				
+				//var axesHelper = new THREE.AxesHelper(5);
+				//scene.add(axesHelper);
+				
+				//add more complex lighting for 'face' rendering mode (requirement 4).
+				spotLight = new THREE.SpotLight(0xffffff);
+				spotLight.position.set(-10, 20, 40);
+				spotLight.intensity = 0.8;
+				spotLight.castShadow = true;
+				scene.add(spotLight);
+				
+                //Set up the Web GL renderer.
+                renderer = new THREE.WebGLRenderer({ antialias: true });
+				renderer.setPixelRatio(window.devicePixelRatio); // HiDPI/retina rendering
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                document.body.appendChild(renderer.domElement);
+				
+				renderer.shadowMap.enabled = true;
+				renderer.shadowMap.type = THREE.BasicShadowMap;
+				
+                // Handle resizing of the browser window.
+				window.addEventListener('resize', handleResize, false);
+            }
+
+            // Handle resizing of the browser window.
+            function handleResize()
+            {
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+				renderer.setSize(window.innerWidth, window.innerHeight);
+			}
+
+            // Animation loop function. This function is called whenever an update is required.
+			function animate()
+            {
+				requestAnimationFrame(animate);
+
+                //Rotates the cube (requirement 3).
+				if (objectRotateX){
+					rotNumX += rotSpeed;
+				}
+				
+				if (objectRotateY){
+					rotNumY += rotSpeed;
+				}
+				
+				if (objectRotateZ){
+					rotNumZ += rotSpeed;
+				}
+				
+				if (cubeActive){
+					cube.rotation.x = rotNumX;
+					cube.rotation.y = rotNumY;
+					cube.rotation.z = rotNumZ;
+				}
+				if (bunnyActive){
+					bunny.rotation.x = rotNumX;
+					bunny.rotation.y = rotNumY;
+					bunny.rotation.z = rotNumZ;
+				}
+				
+				
+				//resets the cube's rotation
+				if (objectRotateR){
+					rotNumX = 0;
+					rotNumY = 0;
+					rotNumZ = 0;
+					if (cubeActive){
+						cube.rotation.x = 0;
+						cube.rotation.y = 0;
+						cube.rotation.z = 0;
+					}
+					if (bunnyActive){
+						bunny.rotation.x = 0;
+						bunny.rotation.y = 0;
+						bunny.rotation.z = 0;
+					}
+					objectRotateX = false;
+					objectRotateY = false;
+					objectRotateZ = false;
+					objectRotateR = !objectRotateR;
+				}
+				
+				
+				
+				
+				//orbit camera controls
+				if (rotCamHor == 1){
+					Theta += 0.01;
+				} else if (rotCamHor == -1){
+					Theta -= 0.01;
+				}
+				
+				if (rotCamVer == 1){
+					Phi -= 0.01;
+				} else if (rotCamVer == -1){
+					Phi += 0.01;
+				}
+				
+				if (rotateCam){
+					camera.position.x = R * Math.sin(Theta) * Math.sin(Phi);
+					camera.position.y = R * Math.cos(Phi);
+					camera.position.z = R *	Math.cos(Theta) * Math.sin(Phi);
+					camera.lookAt(new THREE.Vector3(0,0,0));
+				} else {
+					rotCamHor = 0;
+					rotCamVer = 0;
+				}
+				
+                //Render the current scene to the screen.
+				renderer.render(scene, camera);
+			}
+			
+			function face(){
+				alert('Face render mode (requirement 4).');
+				if (cubeActive == true){
+					scene.remove(cube);
+					var geometry = new THREE.BoxGeometry(2,2,2);
+					var material = new THREE.MeshPhongMaterial({color:  0x33B8FF});
+					cube = new THREE.Mesh(geometry, material);
+					scene.add(cube);
+				}
+				
+				if (bunnyActive == true){
+					scene.remove(bunny);
+					var bunnyMaterial = new THREE.MeshPhongMaterial({color: 0xffffff});
+					bunny = new THREE.Mesh(bunnyGeometry, bunnyMaterial);
+					bunny.scale.set(bunnySize, bunnySize, bunnySize);
+					scene.add(bunny);
+				}
+			}
+			
+			function edge(){
+				alert('Edge render mode (requirement 4).');
+				if (cubeActive == true){
+					scene.remove(cube);
+					var geometry = new THREE.BoxGeometry(2,2,2);
+					var material = new THREE.MeshBasicMaterial({color: 0x33B8FF, wireframe: true});
+					cube = new THREE.Mesh(geometry, material);
+					scene.add(cube);
+				}
+				
+				if (bunnyActive == true){
+					scene.remove(bunny);
+					var bunnyMaterial = new THREE.PointsMaterial({color: 0x11ed3d});
+					var newBunnyGeometry = new THREE.EdgesGeometry(bunnyGeometry);
+					bunny = new THREE.LineSegments(newBunnyGeometry, bunnyMaterial);
+					bunny.scale.set(bunnySize, bunnySize, bunnySize);
+					scene.add(bunny);
+				}
+
+			}
+			
+			function vertex(){
+			    alert('Vertex render mode (requirement 4).');
+				if (cubeActive == true){
+					scene.remove(cube);
+					var geometry = new THREE.BoxGeometry(2,2,2);
+					var pointMaterial = new THREE.PointsMaterial({color: 0xffea00, size: 0.1});
+					cube = new THREE.Points( geometry, pointMaterial );
+					scene.add(cube);
+				}
+				
+				if (bunnyActive == true){
+					scene.remove(bunny);
+					var bunnyMaterial = new THREE.PointsMaterial({color: 0x11ed3d, size : 0.002});
+					bunny = new THREE.Points(bunnyGeometry, bunnyMaterial);
+					bunny.scale.set(bunnySize, bunnySize, bunnySize);
+					scene.add(bunny);
+				}
+
+			}
+
+            // Handle keyboard presses.
+            function handleKeyDown(event)
+            {
+                switch (event.keyCode)
+                {
+					case 49: //1 cube
+						cubeActive = !cubeActive;
+						if (cubeActive == true){
+							scene.add(cube);
+						} else {
+							scene.remove(cube);
+						}
+					break;
+					case 50: //2 bunny
+					bunnyActive = !bunnyActive;
+						if (bunnyActive == true){
+							bunny.visible = true;
+						} else {
+							bunny.visible = false;
+						}
+					break;
+					case 51: //3 creative task
+						solarSystemActive = !solarSystemActive;
+						if (solarSystemActive == true){
+							loadSolarSystem();
+						} else {
+
+						}
+					break;
+					
+					// Render modes.
+                    case 70: // f = face
+						face();
+                    break;
+                    case 69: // e = edge
+						edge();
+					break;
+                    case 86: // v = vertex
+						vertex();
+                    break;
+					
+                    //Code for starting/stopping rotations (requirement 3).
+					case 82://R reset rotation
+						objectRotateR = !objectRotateR;
+					break;
+					case 88://x rotate the cube by its x axis
+						objectRotateX = !objectRotateX;
+					break;
+					case 89://y rotate the cube by its y axis
+						objectRotateY = !objectRotateY;
+					break;
+					case 90://z rotate the cube by its z axis
+						objectRotateZ = !objectRotateZ;
+					break;
+					
+					//Translation of camera (requirement 5)
+					case 87://w translate up
+						camera.translateY(0.5);
+					break;
+					case 65://a translate left
+						camera.translateX(-0.5);
+					break;
+					case 83://s translate down
+						camera.translateY(-0.5);
+					break;
+					case 68://d translate right
+						camera.translateX(0.5);
+					break;
+					case 221://[ zoom out
+						camera.translateZ(-0.5);
+					break;
+					case 219://] zoom in
+						camera.translateZ(0.5);
+					break;
+					
+					//Orbit camera (requirement 6)
+					case 67://c turns the orbit on and off
+						rotateCam = !rotateCam;
+						
+						var getCamPos = true;
+						
+						if (getCamPos == true){
+							console.log("x " + camera.position.x + " y " + camera.position.y + " z " + camera.position.z);
+							R = Math.sqrt(Math.pow(camera.position.x, 2) + Math.pow(camera.position.y, 2) + Math.pow(camera.position.z, 2));
+							Theta = Math.atan(camera.position.x/camera.position.z);
+							Phi = Math.acos(camera.position.y/R);
+							getCamPos = false;
+						}
+					break;
+					case 74://J horizontal orbit
+						rotCamHor = -1;
+						rotCamVer = 0;
+					break;
+					case 76://L horizontal orbit
+						rotCamHor = 1;
+						rotCamVer = 0;
+					break;
+					case 73://I vertial orbit
+						rotCamVer = 1;
+						rotCamHor = 0;
+					break;
+					case 75://K veritcal orbit
+						rotCamVer = -1;
+						rotCamHor = 0;
+					break;
+				
+					//loading the textures of the cube
+					case 84: //T  
+						loadTexture();
+					break
+                }
+			}	
+				function loadTexture(){
+					applyTexture = !applyTexture;
+					if (applyTexture){
+						var loadManager = new THREE.LoadingManager();
+						var loader = new THREE.TextureLoader(loadManager);
+						cube.material = [
+							new THREE.MeshPhongMaterial({map: loader.load('./images/diceface1.png')}),
+							new THREE.MeshPhongMaterial({map: loader.load('./images/diceface2.png')}),
+							new THREE.MeshPhongMaterial({map: loader.load('./images/diceface3.png')}),
+							new THREE.MeshPhongMaterial({map: loader.load('./images/diceface4.png')}),
+							new THREE.MeshPhongMaterial({map: loader.load('./images/diceface5.png')}),
+							new THREE.MeshPhongMaterial({map: loader.load('./images/diceface6.png')}),
+						];
+							
+					} else {
+						cube.material = new THREE.MeshPhongMaterial({color: 0x33B8FF});
+					}
+				}
+				
+				function loadBunny(){				
+						var loader = new THREE.OBJLoader();
+						loader.load(
+							'./bunny-5000.obj',
+							function (object) {
+								bunny = object.children[0];
+								scene.add(bunny);
+								bunny.visible = false;
+
+								bunny.geometry.computeBoundingBox();
+								var boundingBoxX = bunny.geometry.boundingBox.getSize().x;
+								var boundingBoxY = bunny.geometry.boundingBox.getSize().y;
+								var boundingBoxZ = bunny.geometry.boundingBox.getSize().z;
+								var maxDimention = Math.max(boundingBoxX,boundingBoxY,boundingBoxZ);
+								var cubeHeight = cube.geometry.parameters.height;
+								
+								bunnySize = cubeHeight/maxDimention;//1/4
+								bunny.scale.set(bunnySize, bunnySize, bunnySize);
+								
+								console.log("x " + boundingBoxX);
+								console.log("y " + boundingBoxY);
+								console.log("z " + boundingBoxZ);
+								console.log("cube height " + cube.geometry.parameters.height);
+								
+								var bMaxX = bunny.geometry.boundingBox.max.x;
+								var bMinX = bunny.geometry.boundingBox.min.x;
+								var bMaxY = bunny.geometry.boundingBox.max.y;
+								var bMinY = bunny.geometry.boundingBox.min.y;
+								var bMaxZ = bunny.geometry.boundingBox.max.z;
+								var bMinZ = bunny.geometry.boundingBox.min.z;
+								
+								var bunnyTransX = -((bMaxX + bMinX)/2);	
+								var bunnyTransY = -((bMaxY + bMinY)/2);
+								var bunnyTransZ = -((bMaxZ + bMinZ)/2);									
+								bunny.geometry.translate(bunnyTransX, bunnyTransY, bunnyTransZ);
+								
+								bunnyGeometry = bunny.geometry;
+							},
+							function (xhr) {
+								console.log( ( xhr.loaded / xhr.total * 100 ) + '% loaded' );
+							},
+							function (error) {
+								console.log('An error happened');
+							}
+						);
+				}
+				var clickObjects = [];
+				var ambientLight;
+				var light
+				var cube2;
+				var sun;
+				var mercury;
+				var venus;
+				var earth;
+				var moon;
+				var mars;
+				var jupiter;
+				
+				var Ra = 0;
+				var Phib = 0;
+				var thetaM = 0;
+				var thetaV = 0;
+				var thetaE = 0;
+				var thetaMo = 0;
+				var thetaMa = 0;
+				var thetaJ = 0;
+				//creates a solar system
+				function loadSolarSystem(){
+					if (solarSystemActive){
+						scene.remove(vertexPoints);
+						scene.remove(cube);
+						scene.remove(spotLight);
+						scene.remove(bunny);
+						
+						//sun
+						var geometry = new THREE.SphereGeometry(1.5, 64, 64);
+						var loadManager = new THREE.LoadingManager();
+						var loader = new THREE.TextureLoader(loadManager);
+						var material = [new THREE.MeshBasicMaterial({map: loader.load('./images./SunImage.jpg')}),];
+						sun = new THREE.Mesh(geometry, material);
+						scene.add(sun);
+						
+						
+						//mercury
+						var geometry = new THREE.SphereGeometry(0.05, 32, 32);
+						var loadManager = new THREE.LoadingManager();
+						var loader = new THREE.TextureLoader(loadManager);
+						var material = [new THREE.MeshPhongMaterial({map: loader.load('./images./MercuryImage.jpg')}),];
+						mercury = new THREE.Mesh(geometry, material);
+						mercury.receiveShadow = true;
+						mercury.castShadow = true;
+						scene.add(mercury);
+						mercury.translateX(2);
+
+						
+						//venus
+						var geometry = new THREE.SphereGeometry(0.1, 32, 32);
+						var loadManager = new THREE.LoadingManager();
+						var loader = new THREE.TextureLoader(loadManager);
+						var material = [new THREE.MeshPhongMaterial({map: loader.load('./images./VenusImage.jpg')}),];
+						venus = new THREE.Mesh(geometry, material);
+						venus.receiveShadow = true;
+						venus.castShadow = true;
+						scene.add(venus);
+						venus.translateX(2.5);
+						
+						
+						//earth
+						var geometry = new THREE.SphereGeometry(0.15, 32, 32);
+						var loadManager = new THREE.LoadingManager();
+						var loader = new THREE.TextureLoader(loadManager);
+						var material = [new THREE.MeshPhongMaterial({map: loader.load('./images./EarthImage.jpg')}),];
+						earth = new THREE.Mesh(geometry, material);
+						earth.receiveShadow = true;
+						earth.castShadow = true;
+						scene.add(earth);
+						earth.translateX(3);
+						
+						//moon
+						var geometry = new THREE.SphereGeometry(0.02, 32, 32);
+						var loadManager = new THREE.LoadingManager();
+						var loader = new THREE.TextureLoader(loadManager);
+						var material = [new THREE.MeshPhongMaterial({map: loader.load('./images./EarthMoonImage.jpg')}),];
+						moon = new THREE.Mesh(geometry, material);
+						moon.receiveShadow = true;
+						moon.castShadow = true;
+						scene.add(moon);
+						moon.translateX(3);
+						
+						//mars
+						var geometry = new THREE.SphereGeometry(0.05, 32, 32);
+						var loadManager = new THREE.LoadingManager();
+						var loader = new THREE.TextureLoader(loadManager);
+						var material = [new THREE.MeshPhongMaterial({map: loader.load('./images./MarsImage.jpg')}),];
+						mars = new THREE.Mesh(geometry, material);
+						mars.receiveShadow = true;
+						mars.castShadow = true;
+						scene.add(mars);
+						mars.translateX(3.5);
+						
+						//jupiter
+						var geometry = new THREE.SphereGeometry(0.3, 32, 32);
+						var loadManager = new THREE.LoadingManager();
+						var loader = new THREE.TextureLoader(loadManager);
+						var material = [new THREE.MeshPhongMaterial({map: loader.load('./images./JupiterImage.jpg')}),];
+						jupiter = new THREE.Mesh(geometry, material);
+						jupiter.receiveShadow = true;
+						jupiter.castShadow = true;
+						scene.add(jupiter);
+						jupiter.translateX(4.5);
+						
+						
+						
+						
+						
+						
+						//lights
+						ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
+						scene.add(ambientLight);
+						light = new THREE.PointLight(0xffaa42, 2, 18);
+						light.position.set(0, 1, 0);
+						light.castShadow = true;
+						light.shadow.camera.near = 0.1;
+						light.shadow.camera.far = 25;
+						scene.add(light);
+						var geometry = new THREE.BoxGeometry(0.2,0.2,0.2);
+						var material = new THREE.MeshBasicMaterial({color: 0x33B8FF});
+						cube2 = new THREE.Mesh(geometry, material);
+						cube2.position.set(0, 1, 0);
+						scene.add(cube2);
+						
+						//add a plane
+						var geometry = new THREE.PlaneGeometry(20, 20);
+						var material = new THREE.MeshPhongMaterial( {color: 0x7a7a7a, side: THREE.DoubleSide} );
+						var plane = new THREE.Mesh(geometry, material);
+						plane.rotation.x = Math.PI / 2;
+						plane.translateZ(1.5);
+						plane.receiveShadow = true;
+						scene.add( plane );
+						
+						//add stars
+						var geometry = new THREE.SphereGeometry(60, 64, 64);
+						var material = new THREE.MeshBasicMaterial()
+						material.map = THREE.ImageUtils.loadTexture('./images/StarFieldImage.png')
+						material.side = THREE.BackSide;
+						var mesh  = new THREE.Mesh(geometry, material)
+						scene.add(mesh)
+						
+						sun.name = "sun";
+						mercury.name = "mercury";
+						venus.name = "venus";
+						earth.name = "earth";
+						moon.name = "moon";
+						mars.name = "mars";
+						jupiter.name = "jupiter";
+						
+						clickObjects.push(sun);
+						clickObjects.push(mercury);
+						clickObjects.push(venus);
+						clickObjects.push(earth);
+						clickObjects.push(moon);
+						clickObjects.push(mars);
+						clickObjects.push(jupiter);
+						
+						animatePlanets();
+					} else {
+						scene.add(cube);
+						scene.add(spotLight);
+					}
+				}
+				var mouse = {x:0, y:0};
+				var projector;
+				window.addEventListener( 'mousedown', onMouseDown, false );
+				var sunDestoryed = false;
+				var mercuryDestoryed = false;
+				var venusDestoryed = false;
+				var earthDestoryed = false;
+				var marsDestoryed = false;
+				var jupiterDestoryed = false;
+				
+				function onMouseDown(event){
+					mouse.x = (event.clientX/window.innerWidth)*2-1;
+					mouse.y = -(event.clientY/window.innerHeight)*2+1;
+					
+					var vector = new THREE.Vector3(mouse.x, mouse.y, 1);
+					var raycaster = new THREE.Raycaster();
+					raycaster.setFromCamera(mouse, camera);
+					var intersects = raycaster.intersectObjects(clickObjects);
+					console.log(intersects);
+					console.log(clickObjects);
+					if (intersects.length > 0){
+						if (intersects[0].object.name == "sun"){
+							if (sunDestoryed == false){
+								scene.remove(sun);
+								scene.remove(cube2);
+								scene.remove(light);
+								explode(sun);
+								sunDestoryed = true;
+							}
+						}
+						if (intersects[0].object.name == "mercury"){
+							if (mercuryDestoryed == false){
+								scene.remove(mercury);
+								explode(mercury);
+								mercuryDestoryed = true;
+							}
+						}
+						if (intersects[0].object.name == "venus"){
+							if (venusDestoryed == false){
+								scene.remove(venus);
+								explode(venus);
+								venusDestoryed = true;
+							}
+						} 
+						if (intersects[0].object.name == "earth"){
+							if (earthDestoryed == false){
+								scene.remove(earth);
+								scene.remove(moon);
+								explode(earth);
+								earthDestoryed = true;
+							}
+						} 
+						if (intersects[0].object.name == "mars"){
+							if (marsDestoryed == false){
+								scene.remove(mars);
+								explode(mars);
+								marsDestoryed = true;
+							}
+						} 
+						if (intersects[0].object.name == "jupiter"){
+							if (jupiterDestoryed == false){
+								scene.remove(jupiter);
+								explode(jupiter);
+								jupiterDestoryed = true;
+							}
+						}
+					}
+				}
+				
+				var particles = [];
+				var numOfPar = 500;
+				var particlesComplete = 0;
+				function explode(objectName){
+					console.log(particlesComplete);
+					for (var i = 0; i < particles.length; i++){
+						scene.remove(particles[i]);
+					}
+					particles = [];
+					particlesComplete = 0;
+					for (var i = 0; i < numOfPar; i++){
+						var geometry = new THREE.SphereGeometry(0.01, 16, 16);
+						var material = new THREE.MeshBasicMaterial({color: 0xFFFFFF});
+						var particle = new THREE.Mesh(geometry, material);
+						particle.position.set = objectName.position;
+						particle.position.x = objectName.position.x;
+						particle.position.y = objectName.position.y;
+						particle.position.z = objectName.position.z;
+						particle.material.transparent = true;
+						particles.push(particle);
+						scene.add(particle);
+					}
+					particlesComplete = 1;
+				}
+				
+				function animatePlanets(){
+				if (particlesComplete == 1){
+					for (var i = 0; i < numOfPar; i++){
+						particles[i].translateX((Math.random()-1 + Math.random())/2);
+						particles[i].translateY((Math.random()-1 + Math.random())/2);
+						particles[i].translateZ((Math.random()-1 + Math.random())/2);
+						particles[i].material.opacity -= 0.02;
+					}
+				}
+				
+					requestAnimationFrame(animatePlanets);
+					
+					sun.rotation.y += 0.002;
+					mercury.rotation.y += 0.05;
+					venus.rotation.y += 0.05;
+					earth.rotation.y += 0.05;
+					moon.rotation.y += 0.01;
+					mars.rotation.y += 0.05;
+					jupiter.rotation.y -= 0.05;
+					
+					thetaM += 0.03;
+					thetaV += 0.02;
+					thetaE += 0.01;
+					thetaMo += 0.2;
+					thetaMa += 0.008;
+					thetaJ += 0.005;
+					
+					//mercury
+					Ra = 2;
+					mercury.position.x = Ra * Math.sin(thetaM) * Math.cos(Phib);
+					mercury.position.y = Ra * Math.sin(thetaM) * Math.sin(Phib);
+					mercury.position.z = Ra * Math.cos(thetaM);
+					
+					//venus
+					Ra = 2.5;
+					venus.position.x = Ra * Math.sin(thetaV) * Math.cos(Phib);
+					venus.position.y = Ra * Math.sin(thetaV) * Math.sin(Phib);
+					venus.position.z = Ra * Math.cos(thetaV);
+					
+					//earth
+					Ra = 3;
+					earth.position.x = Ra * Math.sin(thetaE) * Math.cos(Phib);
+					earth.position.y = Ra * Math.sin(thetaE) * Math.sin(Phib);
+					earth.position.z = Ra * Math.cos(thetaE);
+					
+					//moon
+					Ra = 0.3;
+					moon.position.x = Ra * Math.sin(thetaMo) * Math.cos(Phib);
+					moon.position.y = Ra * Math.sin(thetaMo) * Math.sin(Phib);
+					moon.position.z = Ra * Math.cos(thetaMo);
+					
+					moon.position.x += earth.position.x;
+					moon.position.y += earth.position.y;
+					moon.position.z += earth.position.z;
+					
+					//mars
+					Ra = 3.5;
+					mars.position.x = Ra * Math.sin(thetaMa) * Math.cos(Phib);
+					mars.position.y = Ra * Math.sin(thetaMa) * Math.sin(Phib);
+					mars.position.z = Ra * Math.cos(thetaMa);
+					
+					//jupiter
+					Ra = 4.5;
+					jupiter.position.x = Ra * Math.sin(thetaJ) * Math.cos(Phib);
+					jupiter.position.y = Ra * Math.sin(thetaJ) * Math.sin(Phib);
+					jupiter.position.z = Ra * Math.cos(thetaJ);
+					
+					renderer.render(scene, camera);
+				}
+		</script>
+	</body>
+</html>
